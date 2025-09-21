@@ -44,7 +44,7 @@ export function Model(props: React.ComponentProps<'group'>) {
       <mesh 
         // Extract geometry from the loaded model
         // We cast to THREE.Mesh because our generic type doesn't know the specific node type
-        geometry={(nodes.Potted_Plant000 as THREE.Mesh).geometry} 
+        geometry={(nodes.Potted_Plant000 as unknown as THREE.Mesh).geometry} 
         
         // Use the material that came with the 3D model
         material={materials.Material} 
@@ -60,9 +60,8 @@ export function Model(props: React.ComponentProps<'group'>) {
         onClick={randomizePosition}
         
         // XR Pointer Events Configuration
-        // pointerEventsType controls what types of XR interactions are allowed
-        // 'deny: grab' means users can't grab and move the object, only click/point at it
-        pointerEventsType={{ deny: 'grab' }}
+        // Note: XR interactions like grab/point are handled automatically by @react-three/xr
+        // The onClick, onPointerOver, and onPointerOut events work with XR controllers and hand tracking
         
         // onPointerOver: When mouse hovers or XR controller/hand points at the plant
         onPointerOver={(e) => {
