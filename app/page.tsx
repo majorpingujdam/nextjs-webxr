@@ -1,24 +1,59 @@
 // This directive tells Next.js that this component runs on the client-side
-// It's needed because we're using browser-specific features like 3D graphics
+// It's needed because we're using browser-specific features like 3D graphics and WebXR
 'use client';
 
-// Import required components
+// Import required components for 3D rendering
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import { Model as PottedPlant } from './components/PottedPlant';
 import { Cube } from './components/Cube';
 
-// Main homepage component that renders our 3D scene
+// Import XR components for WebXR functionality (AR/VR)
+import { XR, createXRStore, XROrigin } from '@react-three/xr';
+
+// Create an XR store that manages the WebXR session state
+// This store handles entering/exiting AR/VR modes and manages XR-specific functionality
+const store = createXRStore();
+
+// Main homepage component that renders our 3D scene with XR capabilities
 export default function Home() {
   return (
     // Container div that takes up the full viewport (100% width and height)
     <div style={{ width: '100vw', height: '100vh' }}>
+      
       {/* 
         Canvas is the main React Three Fiber component that creates a 3D scene
         It sets up WebGL context and handles rendering
         camera prop sets the initial camera position [x, y, z]
+        
+        The XR component will automatically provide the default "Enter XR" UI
+        which intelligently shows AR/VR options based on device capabilities
       */}
       <Canvas camera={{ position: [5, 5, 5] }}>
+        
+        {/* 
+          XR WRAPPER
+          The XR component enables WebXR functionality for everything inside it
+          It handles XR session management, input tracking, and rendering adjustments
+          
+          Using default settings which automatically:
+          - Shows the built-in "Enter XR" UI in the top center
+          - Detects device capabilities (AR/VR support)
+          - Provides appropriate options based on the device
+          - Handles session management and transitions
+        */}
+        <XR store={store}>
+        
+        {/* 
+          XR ORIGIN - Controls where the user starts in VR/AR
+          This positions the user at a good viewing distance from the scene objects
+          Position [4, 1.6, 4] places the user:
+          - 4 units away on X-axis (to the right)
+          - 1.6 units up on Y-axis (average human eye height)
+          - 4 units away on Z-axis (forward from scene center)
+          This gives a nice diagonal view of both the cube and plant
+        */}
+        <XROrigin position={[4, 1.6, 4]} />
         
         {/* 
           LIGHTING SETUP
@@ -87,12 +122,15 @@ export default function Home() {
           - Left click + drag: Rotate camera around the scene
           - Right click + drag: Pan the camera
           - Scroll wheel: Zoom in and out
+          Note: OrbitControls work in both regular 3D mode and XR mode
         */}
         <OrbitControls 
           enablePan={true}      // Allow panning (moving the camera)
           enableZoom={true}     // Allow zooming in/out
           enableRotate={true}   // Allow rotating around the scene
         />
+        
+        </XR> {/* End of XR wrapper - all 3D content above is now XR-enabled */}
       </Canvas>
     </div>
   );

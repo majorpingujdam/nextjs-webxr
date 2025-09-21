@@ -52,23 +52,31 @@ export function Model(props: React.ComponentProps<'group'>) {
         // Scale up the model (original might be very small)
         scale={100}
         
-        // INTERACTION EVENTS
-        // onClick: When user clicks the plant, trigger position randomization
+        // XR-COMPATIBLE INTERACTION EVENTS
+        // These events work with mouse, touch, XR controllers, and hand tracking
+        
+        // onClick: When user clicks/touches/points at the plant, trigger position randomization
+        // This works with XR controllers, hand tracking, mouse, and touch
         onClick={randomizePosition}
         
-        // onPointerOver: When mouse hovers over the plant
+        // XR Pointer Events Configuration
+        // pointerEventsType controls what types of XR interactions are allowed
+        // 'deny: grab' means users can't grab and move the object, only click/point at it
+        pointerEventsType={{ deny: 'grab' }}
+        
+        // onPointerOver: When mouse hovers or XR controller/hand points at the plant
         onPointerOver={(e) => {
           // Mark the object as hovered (useful for other effects)
           e.object.parent!.userData.hovered = true;
-          // Change cursor to pointer to indicate it's clickable
+          // Change cursor to pointer to indicate it's clickable (works in desktop mode)
           document.body.style.cursor = 'pointer';
         }}
         
-        // onPointerOut: When mouse leaves the plant
+        // onPointerOut: When mouse leaves or XR controller/hand stops pointing at the plant
         onPointerOut={(e) => {
           // Remove hovered state
           e.object.parent!.userData.hovered = false;
-          // Reset cursor back to default
+          // Reset cursor back to default (works in desktop mode)
           document.body.style.cursor = 'default';
         }}
       />
