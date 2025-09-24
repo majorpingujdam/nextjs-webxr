@@ -5,7 +5,7 @@
 // Import required components
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { XR, createXRStore, useXR } from '@react-three/xr';
+import { XR, createXRStore } from '@react-three/xr';
 import { useState, useEffect } from 'react';
 import { Model as PottedPlant } from './components/PottedPlant';
 import { Cube } from './components/Cube';

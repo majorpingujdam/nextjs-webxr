@@ -2,7 +2,6 @@
 // This demonstrates how to create modular 3D objects that can be used anywhere
 
 import React from 'react';
-import * as THREE from 'three';
 
 // Define the Cube component as a function that accepts mesh properties
 // React.ComponentProps<'mesh'> means it accepts any props that a regular mesh would accept

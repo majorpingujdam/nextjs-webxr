@@ -44,7 +44,7 @@ export function Model(props: React.ComponentProps<'group'>) {
       <mesh 
         // Extract geometry from the loaded model
         // We cast to THREE.Mesh because our generic type doesn't know the specific node type
-        geometry={(nodes.Potted_Plant000 as THREE.Mesh).geometry} 
+        geometry={(nodes.Potted_Plant000 as unknown as THREE.Mesh).geometry} 
         
         // Use the material that came with the 3D model
         material={materials.Material} 
