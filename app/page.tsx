@@ -15,25 +15,49 @@ import { Cube } from './components/Cube';
 // The store handles entering/exiting AR/VR modes and tracks session status
 const store = createXRStore();
 
-// Animated cube component that rotates continuously
-function AnimatedCube({ position, color, size = 1 }: { position: [number, number, number], color: string, size?: number }) {
+// Orbital cube component that orbits around the plant (galaxy center)
+function OrbitalCube({ 
+  orbitRadius, 
+  orbitSpeed, 
+  color, 
+  size = 1, 
+  orbitHeight = 0,
+  rotationSpeed = 1,
+  orbitOffset = 0 
+}: { 
+  orbitRadius: number, 
+  orbitSpeed: number, 
+  color: string, 
+  size?: number,
+  orbitHeight?: number,
+  rotationSpeed?: number,
+  orbitOffset?: number
+}) {
   const meshRef = useRef<THREE.Mesh>(null!);
   
   // Animation loop - runs every frame
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (meshRef.current) {
-      // Rotate the cube on all axes for a complex spinning motion
-      meshRef.current.rotation.x += delta * 0.5;
-      meshRef.current.rotation.y += delta * 0.3;
-      meshRef.current.rotation.z += delta * 0.2;
+      const time = state.clock.elapsedTime;
       
-      // Add a subtle floating motion
-      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime) * 0.2;
+      // Calculate orbital position around the plant (galaxy center at [0, 0, 0])
+      const angle = time * orbitSpeed + orbitOffset;
+      const x = Math.cos(angle) * orbitRadius;
+      const z = Math.sin(angle) * orbitRadius;
+      const y = orbitHeight + Math.sin(time * 2) * 0.3; // Subtle vertical floating
+      
+      // Set orbital position
+      meshRef.current.position.set(x, y, z);
+      
+      // Rotate the cube itself for spinning effect
+      meshRef.current.rotation.x += 0.01 * rotationSpeed;
+      meshRef.current.rotation.y += 0.01 * rotationSpeed;
+      meshRef.current.rotation.z += 0.01 * rotationSpeed * 0.5;
     }
   });
   
   return (
-    <mesh ref={meshRef} position={position}>
+    <mesh ref={meshRef}>
       <boxGeometry args={[size, size, size]} />
       <meshStandardMaterial 
         color={color} 
@@ -180,72 +204,25 @@ export default function Home() {
           These are our interactive 3D elements in the scene
         */}
         
-        {/* Collection of interesting cubes with different properties */}
+        {/* GALAXY SYSTEM - All cubes orbit around the plant */}
         
-        {/* Main orange cube at the center */}
-        <Cube position={[0, 0, 0]} />
+        {/* Inner orbit - Fast moving small cubes */}
+        <OrbitalCube orbitRadius={2} orbitSpeed={1.5} color="#FF4080" size={0.6} orbitHeight={0.5} rotationSpeed={2} orbitOffset={0} />
+        <OrbitalCube orbitRadius={2} orbitSpeed={1.5} color="#00FFFF" size={0.5} orbitHeight={-0.3} rotationSpeed={1.5} orbitOffset={Math.PI} />
         
-        {/* Floating metallic cube */}
-        <mesh position={[3, 2, -2]}>
-          <boxGeometry args={[1.5, 1.5, 1.5]} />
-          <meshStandardMaterial 
-            color="#C0C0C0" 
-            metalness={0.9} 
-            roughness={0.1}
-            emissive="#444444"
-          />
-        </mesh>
+        {/* Middle orbit - Medium cubes */}
+        <OrbitalCube orbitRadius={3.5} orbitSpeed={1} color="#C0C0C0" size={1.2} orbitHeight={0.8} rotationSpeed={1.2} orbitOffset={Math.PI/3} />
+        <OrbitalCube orbitRadius={3.5} orbitSpeed={1} color="#0080FF" size={1} orbitHeight={-0.2} rotationSpeed={1.8} orbitOffset={Math.PI + Math.PI/3} />
+        <OrbitalCube orbitRadius={3.5} orbitSpeed={1} color="#8000FF" size={0.8} orbitHeight={0.3} rotationSpeed={1.3} orbitOffset={2*Math.PI/3} />
         
-        {/* Glowing blue cube */}
-        <mesh position={[-3, 1, 1]}>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial 
-            color="#0080FF" 
-            metalness={0.2} 
-            roughness={0.3}
-            emissive="#004080"
-          />
-        </mesh>
+        {/* Outer orbit - Larger cubes */}
+        <OrbitalCube orbitRadius={5} orbitSpeed={0.7} color="#00FF80" size={1.5} orbitHeight={0.5} rotationSpeed={0.8} orbitOffset={0} />
+        <OrbitalCube orbitRadius={5} orbitSpeed={0.7} color="#FFD700" size={1} orbitHeight={-0.5} rotationSpeed={1.5} orbitOffset={Math.PI} />
+        <OrbitalCube orbitRadius={5} orbitSpeed={0.7} color="#FF6B35" size={1.3} orbitHeight={0.2} rotationSpeed={1.1} orbitOffset={Math.PI/2} />
         
-        {/* Translucent purple cube */}
-        <mesh position={[2, -0.5, 3]}>
-          <boxGeometry args={[1.2, 1.2, 1.2]} />
-          <meshStandardMaterial 
-            color="#8000FF" 
-            metalness={0.1} 
-            roughness={0.4}
-            transparent={true}
-            opacity={0.7}
-          />
-        </mesh>
-        
-        {/* Animated rotating cube with floating motion */}
-        <AnimatedCube position={[-2, 1.5, -3]} color="#FF4080" size={0.8} />
-        
-        {/* Large emerald cube */}
-        <mesh position={[0, -1, -5]}>
-          <boxGeometry args={[2, 2, 2]} />
-          <meshStandardMaterial 
-            color="#00FF80" 
-            metalness={0.1} 
-            roughness={0.6}
-            emissive="#004020"
-          />
-        </mesh>
-        
-        {/* Small golden cube */}
-        <mesh position={[4, 0.5, 0]}>
-          <boxGeometry args={[0.6, 0.6, 0.6]} />
-          <meshStandardMaterial 
-            color="#FFD700" 
-            metalness={0.8} 
-            roughness={0.2}
-            emissive="#664400"
-          />
-        </mesh>
-        
-        {/* Another animated cube with different animation */}
-        <AnimatedCube position={[1, 2.5, -1]} color="#00FFFF" size={0.5} />
+        {/* Distant orbit - Slow moving large cubes */}
+        <OrbitalCube orbitRadius={7} orbitSpeed={0.4} color="#8A2BE2" size={1.8} orbitHeight={1} rotationSpeed={0.6} orbitOffset={Math.PI/4} />
+        <OrbitalCube orbitRadius={7} orbitSpeed={0.4} color="#FF1493" size={1.4} orbitHeight={-0.8} rotationSpeed={0.9} orbitOffset={Math.PI + Math.PI/4} />
         
         {/* Interactive potted plant that can be clicked to teleport */}
         <PottedPlant scale={10} />
