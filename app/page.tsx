@@ -3,16 +3,48 @@
 'use client';
 
 // Import required components
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import { XR, createXRStore } from '@react-three/xr';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import { Model as PottedPlant } from './components/PottedPlant';
 import { Cube } from './components/Cube';
 
 // Create the XR store - this manages the XR session state
 // The store handles entering/exiting AR/VR modes and tracks session status
 const store = createXRStore();
+
+// Animated cube component that rotates continuously
+function AnimatedCube({ position, color, size = 1 }: { position: [number, number, number], color: string, size?: number }) {
+  const meshRef = useRef<THREE.Mesh>(null!);
+  
+  // Animation loop - runs every frame
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      // Rotate the cube on all axes for a complex spinning motion
+      meshRef.current.rotation.x += delta * 0.5;
+      meshRef.current.rotation.y += delta * 0.3;
+      meshRef.current.rotation.z += delta * 0.2;
+      
+      // Add a subtle floating motion
+      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime) * 0.2;
+    }
+  });
+  
+  return (
+    <mesh ref={meshRef} position={position}>
+      <boxGeometry args={[size, size, size]} />
+      <meshStandardMaterial 
+        color={color} 
+        metalness={0.3} 
+        roughness={0.2}
+        emissive={color}
+        emissiveIntensity={0.1}
+      />
+    </mesh>
+  );
+}
 
 
 // Component to handle XR control buttons outside the Canvas
@@ -82,7 +114,13 @@ function XRControlsOverlay() {
 export default function Home() {
   return (
     // Container div that takes up the full viewport (100% width and height)
-    <div style={{ width: '100vw', height: '100vh' }}>
+    // Beautiful gradient background for the entire page
+    <div style={{ 
+      width: '100vw', 
+      height: '100vh',
+      background: 'linear-gradient(45deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%)',
+      overflow: 'hidden'
+    }}>
       {/* 
         XR CONTROL BUTTONS OVERLAY
         These HTML buttons float over the 3D scene and are rendered outside the Canvas
@@ -95,7 +133,10 @@ export default function Home() {
         It sets up WebGL context and handles rendering
         camera prop sets the initial camera position [x, y, z]
       */}
-      <Canvas camera={{ position: [5, 5, 5] }}>
+      <Canvas 
+        camera={{ position: [5, 5, 5] }}
+        style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }}
+      >
         {/* 
           XR COMPONENT WRAPPER
           This wraps all 3D content and enables XR functionality
@@ -139,8 +180,72 @@ export default function Home() {
           These are our interactive 3D elements in the scene
         */}
         
-        {/* Static orange cube positioned at the origin (0, 0, 0) */}
-        <Cube />
+        {/* Collection of interesting cubes with different properties */}
+        
+        {/* Main orange cube at the center */}
+        <Cube position={[0, 0, 0]} />
+        
+        {/* Floating metallic cube */}
+        <mesh position={[3, 2, -2]}>
+          <boxGeometry args={[1.5, 1.5, 1.5]} />
+          <meshStandardMaterial 
+            color="#C0C0C0" 
+            metalness={0.9} 
+            roughness={0.1}
+            emissive="#444444"
+          />
+        </mesh>
+        
+        {/* Glowing blue cube */}
+        <mesh position={[-3, 1, 1]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial 
+            color="#0080FF" 
+            metalness={0.2} 
+            roughness={0.3}
+            emissive="#004080"
+          />
+        </mesh>
+        
+        {/* Translucent purple cube */}
+        <mesh position={[2, -0.5, 3]}>
+          <boxGeometry args={[1.2, 1.2, 1.2]} />
+          <meshStandardMaterial 
+            color="#8000FF" 
+            metalness={0.1} 
+            roughness={0.4}
+            transparent={true}
+            opacity={0.7}
+          />
+        </mesh>
+        
+        {/* Animated rotating cube with floating motion */}
+        <AnimatedCube position={[-2, 1.5, -3]} color="#FF4080" size={0.8} />
+        
+        {/* Large emerald cube */}
+        <mesh position={[0, -1, -5]}>
+          <boxGeometry args={[2, 2, 2]} />
+          <meshStandardMaterial 
+            color="#00FF80" 
+            metalness={0.1} 
+            roughness={0.6}
+            emissive="#004020"
+          />
+        </mesh>
+        
+        {/* Small golden cube */}
+        <mesh position={[4, 0.5, 0]}>
+          <boxGeometry args={[0.6, 0.6, 0.6]} />
+          <meshStandardMaterial 
+            color="#FFD700" 
+            metalness={0.8} 
+            roughness={0.2}
+            emissive="#664400"
+          />
+        </mesh>
+        
+        {/* Another animated cube with different animation */}
+        <AnimatedCube position={[1, 2.5, -1]} color="#00FFFF" size={0.5} />
         
         {/* Interactive potted plant that can be clicked to teleport */}
         <PottedPlant scale={10} />
