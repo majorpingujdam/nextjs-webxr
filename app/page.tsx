@@ -4,9 +4,9 @@
 
 // Import required components
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls, Grid, Stars, Sparkles, Cloud } from '@react-three/drei';
 import { XR, createXRStore } from '@react-three/xr';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { Model as PottedPlant } from './components/PottedPlant';
 import { Cube } from './components/Cube';
@@ -14,6 +14,132 @@ import { Cube } from './components/Cube';
 // Create the XR store - this manages the XR session state
 // The store handles entering/exiting AR/VR modes and tracks session status
 const store = createXRStore();
+
+// Cosmic dust particle system
+function CosmicDust() {
+  const pointsRef = useRef<THREE.Points>(null!);
+  
+  // Create particle geometry
+  const particleCount = 2000;
+  const positions = useMemo(() => {
+    const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      // Random positions in a large sphere around the galaxy
+      const radius = Math.random() * 15 + 5;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI;
+      
+      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = radius * Math.cos(phi);
+      positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+    }
+    return positions;
+  }, []);
+  
+  useFrame((state) => {
+    if (pointsRef.current) {
+      // Slow rotation of the particle field
+      pointsRef.current.rotation.y += 0.001;
+      pointsRef.current.rotation.x += 0.0005;
+    }
+  });
+  
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positions, 3]}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.02}
+        color="#ffffff"
+        transparent
+        opacity={0.6}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
+
+// Glowing trail component for orbital cubes
+function GlowTrail({ orbitRadius, orbitSpeed, color, orbitOffset = 0 }: {
+  orbitRadius: number;
+  orbitSpeed: number;
+  color: string;
+  orbitOffset?: number;
+}) {
+  const trailRef = useRef<THREE.Mesh>(null!);
+  const trailPoints = useMemo(() => {
+    const points = [];
+    const segments = 20;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const x = Math.cos(angle) * orbitRadius;
+      const z = Math.sin(angle) * orbitRadius;
+      points.push(new THREE.Vector3(x, 0, z));
+    }
+    return points;
+  }, [orbitRadius]);
+  
+  useFrame((state) => {
+    if (trailRef.current) {
+      const time = state.clock.elapsedTime;
+      const angle = time * orbitSpeed + orbitOffset;
+      
+      // Update trail position
+      trailRef.current.position.x = Math.cos(angle) * orbitRadius;
+      trailRef.current.position.z = Math.sin(angle) * orbitRadius;
+      
+      // Rotate the trail
+      trailRef.current.rotation.y = angle;
+    }
+  });
+  
+  return (
+    <mesh ref={trailRef}>
+      <ringGeometry args={[orbitRadius - 0.1, orbitRadius + 0.1, 32]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={0.3}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
+// Pulsing glow effect for the plant
+function PulsingGlow() {
+  const glowRef = useRef<THREE.Mesh>(null!);
+  
+  useFrame((state) => {
+    if (glowRef.current) {
+      const time = state.clock.elapsedTime;
+      // Pulsing scale and opacity
+      const scale = 1 + Math.sin(time * 2) * 0.1;
+      const opacity = 0.3 + Math.sin(time * 3) * 0.2;
+      
+      glowRef.current.scale.setScalar(scale);
+      if (glowRef.current.material instanceof THREE.MeshBasicMaterial) {
+        glowRef.current.material.opacity = opacity;
+      }
+    }
+  });
+  
+  return (
+    <mesh ref={glowRef}>
+      <sphereGeometry args={[2, 16, 16]} />
+      <meshBasicMaterial
+        color="#00ff88"
+        transparent
+        opacity={0.3}
+        side={THREE.BackSide}
+      />
+    </mesh>
+  );
+}
 
 // Orbital cube component that orbits around the plant (galaxy center)
 function OrbitalCube({ 
@@ -169,34 +295,79 @@ export default function Home() {
         <XR store={store}>
         
         {/* 
-          LIGHTING SETUP
-          We use multiple light sources to create depth and visual interest
+          COSMIC EFFECTS
+          Amazing visual effects for the galaxy system
         */}
         
-        {/* Ambient light provides soft, overall illumination without direction */}
-        <ambientLight intensity={0.4} />
-        
-        {/* Directional light simulates sunlight - comes from one direction */}
-        <directionalLight 
-          position={[10, 10, 5]}  // Position in 3D space [x, y, z]
-          intensity={1.0}         // How bright the light is
-          castShadow              // Enable this light to cast shadows
+        {/* Starfield background */}
+        <Stars 
+          radius={100} 
+          depth={50} 
+          count={5000} 
+          factor={4} 
+          saturation={0} 
+          fade 
+          speed={1}
         />
         
-        {/* Point light radiates in all directions from a single point */}
+        {/* Cosmic dust particles floating around the galaxy */}
+        <CosmicDust />
+        
+        {/* Sparkles for magical effect */}
+        <Sparkles count={100} scale={10} size={2} speed={0.4} color="#ffffff" />
+        
+        {/* Nebula clouds for atmospheric effect */}
+        <Cloud
+          position={[0, 0, -10]}
+          speed={0.1}
+          opacity={0.3}
+          color="#ff6b9d"
+        />
+        <Cloud
+          position={[5, 2, 5]}
+          speed={0.05}
+          opacity={0.2}
+          color="#4dabf7"
+        />
+        
+        {/* 
+          ENHANCED LIGHTING SETUP
+          Dynamic lighting system for the galaxy
+        */}
+        
+        {/* Ambient light provides soft, overall illumination */}
+        <ambientLight intensity={0.3} color="#404080" />
+        
+        {/* Central galaxy light - emanates from the plant */}
         <pointLight 
-          position={[-10, -10, -5]}  // Positioned opposite to main light
-          intensity={0.5}            // Dimmer than main light
-          color="#ffffff"            // Pure white light
+          position={[0, 0, 0]}  // Center of the galaxy
+          intensity={2.0}       // Strong central light
+          color="#00ff88"       // Green glow
+          distance={20}
+          decay={2}
         />
         
-        {/* Spot light creates a cone of light, like a flashlight */}
-        <spotLight
-          position={[0, 10, 0]}  // Directly above the scene
-          angle={0.3}            // Width of the light cone
-          penumbra={1}           // Softness of light edges (0 = sharp, 1 = very soft)
-          intensity={0.3}        // Gentle fill light
-          castShadow             // Enable shadow casting
+        {/* Orbital lights that follow the cubes */}
+        <pointLight 
+          position={[0, 0, 0]}  // Will be animated
+          intensity={1.5}
+          color="#ff4080"
+          distance={15}
+        />
+        
+        {/* Directional light for depth */}
+        <directionalLight 
+          position={[10, 10, 5]}
+          intensity={0.8}
+          color="#ffffff"
+          castShadow
+        />
+        
+        {/* Rim lighting for dramatic effect */}
+        <directionalLight 
+          position={[-10, 5, -10]}
+          intensity={0.5}
+          color="#4dabf7"
         />
         
         {/* 
@@ -205,6 +376,12 @@ export default function Home() {
         */}
         
         {/* GALAXY SYSTEM - All cubes orbit around the plant */}
+        
+        {/* Glow trails for each orbital ring */}
+        <GlowTrail orbitRadius={2} orbitSpeed={1.5} color="#FF4080" orbitOffset={0} />
+        <GlowTrail orbitRadius={3.5} orbitSpeed={1} color="#0080FF" orbitOffset={Math.PI/3} />
+        <GlowTrail orbitRadius={5} orbitSpeed={0.7} color="#00FF80" orbitOffset={0} />
+        <GlowTrail orbitRadius={7} orbitSpeed={0.4} color="#8A2BE2" orbitOffset={Math.PI/4} />
         
         {/* Inner orbit - Fast moving small cubes */}
         <OrbitalCube orbitRadius={2} orbitSpeed={1.5} color="#FF4080" size={0.6} orbitHeight={0.5} rotationSpeed={2} orbitOffset={0} />
@@ -223,6 +400,9 @@ export default function Home() {
         {/* Distant orbit - Slow moving large cubes */}
         <OrbitalCube orbitRadius={7} orbitSpeed={0.4} color="#8A2BE2" size={1.8} orbitHeight={1} rotationSpeed={0.6} orbitOffset={Math.PI/4} />
         <OrbitalCube orbitRadius={7} orbitSpeed={0.4} color="#FF1493" size={1.4} orbitHeight={-0.8} rotationSpeed={0.9} orbitOffset={Math.PI + Math.PI/4} />
+        
+        {/* Galaxy center - Pulsing glow around the plant */}
+        <PulsingGlow />
         
         {/* Interactive potted plant that can be clicked to teleport */}
         <PottedPlant scale={10} />
