@@ -25,6 +25,11 @@ const GalaxyControls = {
   showGlow: true
 };
 
+// Global state for plant position and interactions
+let plantPosition = { x: 0, y: 0, z: 0 };
+let isDragging = false;
+let dragOffset = { x: 0, y: 0, z: 0 };
+
 // Cosmic dust particle system
 function CosmicDust() {
   const pointsRef = useRef<THREE.Points>(null!);
@@ -98,9 +103,10 @@ function GlowTrail({ orbitRadius, orbitSpeed, color, orbitOffset = 0 }: {
       const time = state.clock.elapsedTime;
       const angle = time * orbitSpeed + orbitOffset;
       
-      // Update trail position
-      trailRef.current.position.x = Math.cos(angle) * orbitRadius;
-      trailRef.current.position.z = Math.sin(angle) * orbitRadius;
+      // Update trail position to follow plant
+      trailRef.current.position.x = Math.cos(angle) * orbitRadius + plantPosition.x;
+      trailRef.current.position.z = Math.sin(angle) * orbitRadius + plantPosition.z;
+      trailRef.current.position.y = plantPosition.y;
       
       // Rotate the trail
       trailRef.current.rotation.y = angle;
@@ -135,6 +141,9 @@ function PulsingGlow() {
       if (glowRef.current.material instanceof THREE.MeshBasicMaterial) {
         glowRef.current.material.opacity = opacity;
       }
+      
+      // Update position to follow the plant
+      glowRef.current.position.set(plantPosition.x, plantPosition.y, plantPosition.z);
     }
   });
   
@@ -148,6 +157,85 @@ function PulsingGlow() {
         side={THREE.BackSide}
       />
     </mesh>
+  );
+}
+
+// Draggable plant component with collision detection
+function DraggablePlant() {
+  const plantRef = useRef<THREE.Group>(null!);
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Handle mouse events for dragging
+  const handlePointerDown = (event: any) => {
+    event.stopPropagation();
+    isDragging = true;
+    
+    // Calculate offset from plant center
+    const plantPos = plantRef.current.position;
+    dragOffset.x = event.point.x - plantPos.x;
+    dragOffset.y = event.point.y - plantPos.y;
+    dragOffset.z = event.point.z - plantPos.z;
+    
+    // Change cursor
+    document.body.style.cursor = 'grabbing';
+  };
+  
+  const handlePointerMove = (event: any) => {
+    if (isDragging) {
+      // Update plant position
+      plantPosition.x = event.point.x - dragOffset.x;
+      plantPosition.y = event.point.y - dragOffset.y;
+      plantPosition.z = event.point.z - dragOffset.z;
+      
+      // Update plant position
+      plantRef.current.position.set(plantPosition.x, plantPosition.y, plantPosition.z);
+    }
+  };
+  
+  const handlePointerUp = () => {
+    isDragging = false;
+    document.body.style.cursor = 'default';
+  };
+  
+  const handlePointerOver = () => {
+    if (!isDragging) {
+      setIsHovered(true);
+      document.body.style.cursor = 'grab';
+    }
+  };
+  
+  const handlePointerOut = () => {
+    if (!isDragging) {
+      setIsHovered(false);
+      document.body.style.cursor = 'default';
+    }
+  };
+  
+  return (
+    <group ref={plantRef}>
+      {/* Interactive potted plant that can be dragged */}
+      <PottedPlant 
+        scale={10} 
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      />
+      
+      {/* Visual indicator when hovering */}
+      {isHovered && (
+        <mesh position={[0, 2, 0]}>
+          <ringGeometry args={[1.5, 2, 32]} />
+          <meshBasicMaterial
+            color="#00ff88"
+            transparent
+            opacity={0.5}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
+    </group>
   );
 }
 
@@ -176,15 +264,32 @@ function OrbitalCube({
     if (meshRef.current) {
       const time = state.clock.elapsedTime;
       
-      // Calculate orbital position around the plant (galaxy center at [0, 0, 0])
+      // Calculate orbital position around the plant (now follows plant position)
       // Apply speed multiplier from global controls
       const angle = time * orbitSpeed * GalaxyControls.speedMultiplier + orbitOffset;
-      const x = Math.cos(angle) * orbitRadius;
-      const z = Math.sin(angle) * orbitRadius;
-      const y = orbitHeight + Math.sin(time * 2) * 0.3; // Subtle vertical floating
+      const x = Math.cos(angle) * orbitRadius + plantPosition.x;
+      const z = Math.sin(angle) * orbitRadius + plantPosition.z;
+      const y = orbitHeight + plantPosition.y + Math.sin(time * 2) * 0.3; // Subtle vertical floating
       
       // Set orbital position
       meshRef.current.position.set(x, y, z);
+      
+      // Collision detection with plant
+      const distanceToPlant = Math.sqrt(
+        Math.pow(x - plantPosition.x, 2) + 
+        Math.pow(y - plantPosition.y, 2) + 
+        Math.pow(z - plantPosition.z, 2)
+      );
+      
+      // If cube is too close to plant, push it away
+      if (distanceToPlant < 1.5) {
+        const directionX = (x - plantPosition.x) / distanceToPlant;
+        const directionZ = (z - plantPosition.z) / distanceToPlant;
+        const pushDistance = 1.5;
+        
+        meshRef.current.position.x = plantPosition.x + directionX * pushDistance;
+        meshRef.current.position.z = plantPosition.z + directionZ * pushDistance;
+      }
       
       // Rotate the cube itself for spinning effect
       meshRef.current.rotation.x += 0.01 * rotationSpeed * GalaxyControls.speedMultiplier;
@@ -363,7 +468,7 @@ function GalaxyControlPanel() {
           </div>
           
           {/* Effect Toggles */}
-          <div>
+          <div style={{ marginBottom: '15px' }}>
             <h4 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '14px' }}>
               ✨ Visual Effects
             </h4>
@@ -398,6 +503,39 @@ function GalaxyControlPanel() {
               >
                 Glow
               </button>
+            </div>
+          </div>
+          
+          {/* Plant Controls */}
+          <div>
+            <h4 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '14px' }}>
+              🌱 Plant Controls
+            </h4>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => { 
+                  plantPosition.x = 0; 
+                  plantPosition.y = 0; 
+                  plantPosition.z = 0; 
+                }}
+                style={{
+                  ...buttonStyle,
+                  backgroundColor: '#FF6B35',
+                  color: 'white'
+                }}
+              >
+                Reset Plant
+              </button>
+              <div style={{ 
+                color: '#fff', 
+                fontSize: '12px', 
+                padding: '8px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                borderRadius: '5px',
+                marginTop: '5px'
+              }}>
+                💡 Drag the plant to move the galaxy center!
+              </div>
             </div>
           </div>
         </div>
@@ -557,8 +695,8 @@ export default function Home() {
         {/* Conditional galaxy center - Pulsing glow around the plant */}
         {GalaxyControls.showGlow && <PulsingGlow />}
         
-        {/* Interactive potted plant that can be clicked to teleport */}
-        <PottedPlant scale={10} />
+        {/* Draggable plant with collision detection */}
+        <DraggablePlant />
         
         {/* 
           SCENE HELPERS
