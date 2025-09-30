@@ -15,6 +15,16 @@ import { Cube } from './components/Cube';
 // The store handles entering/exiting AR/VR modes and tracks session status
 const store = createXRStore();
 
+// Global state for galaxy controls
+const GalaxyControls = {
+  speedMultiplier: 1,
+  showParticles: true,
+  showTrails: true,
+  showSparkles: true,
+  showNebula: true,
+  showGlow: true
+};
+
 // Cosmic dust particle system
 function CosmicDust() {
   const pointsRef = useRef<THREE.Points>(null!);
@@ -167,7 +177,8 @@ function OrbitalCube({
       const time = state.clock.elapsedTime;
       
       // Calculate orbital position around the plant (galaxy center at [0, 0, 0])
-      const angle = time * orbitSpeed + orbitOffset;
+      // Apply speed multiplier from global controls
+      const angle = time * orbitSpeed * GalaxyControls.speedMultiplier + orbitOffset;
       const x = Math.cos(angle) * orbitRadius;
       const z = Math.sin(angle) * orbitRadius;
       const y = orbitHeight + Math.sin(time * 2) * 0.3; // Subtle vertical floating
@@ -176,9 +187,9 @@ function OrbitalCube({
       meshRef.current.position.set(x, y, z);
       
       // Rotate the cube itself for spinning effect
-      meshRef.current.rotation.x += 0.01 * rotationSpeed;
-      meshRef.current.rotation.y += 0.01 * rotationSpeed;
-      meshRef.current.rotation.z += 0.01 * rotationSpeed * 0.5;
+      meshRef.current.rotation.x += 0.01 * rotationSpeed * GalaxyControls.speedMultiplier;
+      meshRef.current.rotation.y += 0.01 * rotationSpeed * GalaxyControls.speedMultiplier;
+      meshRef.current.rotation.z += 0.01 * rotationSpeed * 0.5 * GalaxyControls.speedMultiplier;
     }
   });
   
@@ -197,11 +208,10 @@ function OrbitalCube({
 }
 
 
-// Component to handle XR control buttons outside the Canvas
-// This component renders HTML buttons that float over the 3D scene
-function XRControlsOverlay() {
-  // We need to track session state manually since we're outside the XR context
+// Galaxy control panel component
+function GalaxyControlPanel() {
   const [session, setSession] = useState<XRSession | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // Listen for session changes
   useEffect(() => {
@@ -211,6 +221,29 @@ function XRControlsOverlay() {
     return unsubscribe;
   }, []);
   
+  const buttonStyle = {
+    padding: '8px 16px',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    margin: '2px',
+    transition: 'all 0.3s ease'
+  };
+  
+  const activeButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#4CAF50',
+    color: 'white'
+  };
+  
+  const inactiveButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#666',
+    color: 'white'
+  };
+  
   return (
     <div style={{ 
       position: 'absolute', 
@@ -218,33 +251,17 @@ function XRControlsOverlay() {
       left: '20px', 
       zIndex: 1000,
       display: 'flex',
+      flexDirection: 'column',
       gap: '10px'
     }}>
-      {/* Button to enter AR mode - places 3D objects in the real world */}
-      <button 
-        onClick={() => store.enterAR()}
-        style={{
-          padding: '10px 20px',
-          backgroundColor: '#4CAF50',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: 'bold'
-        }}
-      >
-        Enter AR
-      </button>
-      
-      {/* Button to exit XR mode and return to normal view */}
-      {/* Only show this button when there's an active XR session */}
-      {session && (
+      {/* Main control buttons */}
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        {/* AR Button */}
         <button 
-          onClick={() => session.end()}
+          onClick={() => store.enterAR()}
           style={{
             padding: '10px 20px',
-            backgroundColor: '#f44336',
+            backgroundColor: '#4CAF50',
             color: 'white',
             border: 'none',
             borderRadius: '5px',
@@ -253,8 +270,137 @@ function XRControlsOverlay() {
             fontWeight: 'bold'
           }}
         >
-          Exit XR
+          Enter AR
         </button>
+        
+        {/* Galaxy Controls Toggle */}
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: isExpanded ? '#2196F3' : '#FF9800',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}
+        >
+          {isExpanded ? 'Hide Controls' : 'Galaxy Controls'}
+        </button>
+        
+        {/* Exit XR Button */}
+        {session && (
+          <button 
+            onClick={() => session.end()}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold'
+            }}
+          >
+            Exit XR
+          </button>
+        )}
+      </div>
+      
+      {/* Expanded Galaxy Controls */}
+      {isExpanded && (
+        <div style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: '15px',
+          borderRadius: '10px',
+          border: '2px solid #4CAF50',
+          minWidth: '300px'
+        }}>
+          <h3 style={{ color: '#4CAF50', margin: '0 0 10px 0', fontSize: '16px' }}>
+            🌌 Galaxy Controls
+          </h3>
+          
+          {/* Speed Controls */}
+          <div style={{ marginBottom: '15px' }}>
+            <h4 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '14px' }}>
+              ⚡ Speed Control
+            </h4>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => { GalaxyControls.speedMultiplier = 0.1; }}
+                style={GalaxyControls.speedMultiplier === 0.1 ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Slow
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.speedMultiplier = 0.5; }}
+                style={GalaxyControls.speedMultiplier === 0.5 ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Half
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.speedMultiplier = 1; }}
+                style={GalaxyControls.speedMultiplier === 1 ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Normal
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.speedMultiplier = 2; }}
+                style={GalaxyControls.speedMultiplier === 2 ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Fast
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.speedMultiplier = 5; }}
+                style={GalaxyControls.speedMultiplier === 5 ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Turbo
+              </button>
+            </div>
+          </div>
+          
+          {/* Effect Toggles */}
+          <div>
+            <h4 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '14px' }}>
+              ✨ Visual Effects
+            </h4>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => { GalaxyControls.showParticles = !GalaxyControls.showParticles; }}
+                style={GalaxyControls.showParticles ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Dust
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.showTrails = !GalaxyControls.showTrails; }}
+                style={GalaxyControls.showTrails ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Trails
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.showSparkles = !GalaxyControls.showSparkles; }}
+                style={GalaxyControls.showSparkles ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Sparkles
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.showNebula = !GalaxyControls.showNebula; }}
+                style={GalaxyControls.showNebula ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Nebula
+              </button>
+              <button 
+                onClick={() => { GalaxyControls.showGlow = !GalaxyControls.showGlow; }}
+                style={GalaxyControls.showGlow ? activeButtonStyle : inactiveButtonStyle}
+              >
+                Glow
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -272,11 +418,10 @@ export default function Home() {
       overflow: 'hidden'
     }}>
       {/* 
-        XR CONTROL BUTTONS OVERLAY
-        These HTML buttons float over the 3D scene and are rendered outside the Canvas
-        This prevents React Three Fiber from trying to render them as 3D objects
+        GALAXY CONTROL PANEL
+        Interactive controls for speed and visual effects
       */}
-      <XRControlsOverlay />
+      <GalaxyControlPanel />
       
       {/* 
         Canvas is the main React Three Fiber component that creates a 3D scene
@@ -310,25 +455,29 @@ export default function Home() {
           speed={1}
         />
         
-        {/* Cosmic dust particles floating around the galaxy */}
-        <CosmicDust />
+        {/* Conditional cosmic effects based on user controls */}
+        {GalaxyControls.showParticles && <CosmicDust />}
         
-        {/* Sparkles for magical effect */}
-        <Sparkles count={100} scale={10} size={2} speed={0.4} color="#ffffff" />
+        {GalaxyControls.showSparkles && (
+          <Sparkles count={100} scale={10} size={2} speed={0.4} color="#ffffff" />
+        )}
         
-        {/* Nebula clouds for atmospheric effect */}
-        <Cloud
-          position={[0, 0, -10]}
-          speed={0.1}
-          opacity={0.3}
-          color="#ff6b9d"
-        />
-        <Cloud
-          position={[5, 2, 5]}
-          speed={0.05}
-          opacity={0.2}
-          color="#4dabf7"
-        />
+        {GalaxyControls.showNebula && (
+          <>
+            <Cloud
+              position={[0, 0, -10]}
+              speed={0.1}
+              opacity={0.3}
+              color="#ff6b9d"
+            />
+            <Cloud
+              position={[5, 2, 5]}
+              speed={0.05}
+              opacity={0.2}
+              color="#4dabf7"
+            />
+          </>
+        )}
         
         {/* 
           ENHANCED LIGHTING SETUP
@@ -377,11 +526,15 @@ export default function Home() {
         
         {/* GALAXY SYSTEM - All cubes orbit around the plant */}
         
-        {/* Glow trails for each orbital ring */}
-        <GlowTrail orbitRadius={2} orbitSpeed={1.5} color="#FF4080" orbitOffset={0} />
-        <GlowTrail orbitRadius={3.5} orbitSpeed={1} color="#0080FF" orbitOffset={Math.PI/3} />
-        <GlowTrail orbitRadius={5} orbitSpeed={0.7} color="#00FF80" orbitOffset={0} />
-        <GlowTrail orbitRadius={7} orbitSpeed={0.4} color="#8A2BE2" orbitOffset={Math.PI/4} />
+        {/* Conditional glow trails for each orbital ring */}
+        {GalaxyControls.showTrails && (
+          <>
+            <GlowTrail orbitRadius={2} orbitSpeed={1.5} color="#FF4080" orbitOffset={0} />
+            <GlowTrail orbitRadius={3.5} orbitSpeed={1} color="#0080FF" orbitOffset={Math.PI/3} />
+            <GlowTrail orbitRadius={5} orbitSpeed={0.7} color="#00FF80" orbitOffset={0} />
+            <GlowTrail orbitRadius={7} orbitSpeed={0.4} color="#8A2BE2" orbitOffset={Math.PI/4} />
+          </>
+        )}
         
         {/* Inner orbit - Fast moving small cubes */}
         <OrbitalCube orbitRadius={2} orbitSpeed={1.5} color="#FF4080" size={0.6} orbitHeight={0.5} rotationSpeed={2} orbitOffset={0} />
@@ -401,8 +554,8 @@ export default function Home() {
         <OrbitalCube orbitRadius={7} orbitSpeed={0.4} color="#8A2BE2" size={1.8} orbitHeight={1} rotationSpeed={0.6} orbitOffset={Math.PI/4} />
         <OrbitalCube orbitRadius={7} orbitSpeed={0.4} color="#FF1493" size={1.4} orbitHeight={-0.8} rotationSpeed={0.9} orbitOffset={Math.PI + Math.PI/4} />
         
-        {/* Galaxy center - Pulsing glow around the plant */}
-        <PulsingGlow />
+        {/* Conditional galaxy center - Pulsing glow around the plant */}
+        {GalaxyControls.showGlow && <PulsingGlow />}
         
         {/* Interactive potted plant that can be clicked to teleport */}
         <PottedPlant scale={10} />
